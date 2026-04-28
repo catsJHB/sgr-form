@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SGR — Stock Purchase Entry</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+  :root {
+    --bg:#0D0F0E; --surface:#161A18; --card:#1E2421; --border:#2A3330;
+    --accent:#4ADE80; --accent2:#F59E0B; --accent3:#38BDF8; --eur:#A78BFA;
+    --danger:#F87171; --text:#E8EDE9; --muted:#6B7F74; --input-bg:#131714;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;min-height:100vh;overflow-x:hidden;}
+
+  /* Header */
+  .header{background:var(--surface);border-bottom:2px solid var(--accent);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:3px;color:var(--accent);line-height:1;}
+  .logo-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+  .clock{font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);text-align:right;}
+  .clock-date{font-size:10px;color:var(--muted);margin-top:2px;}
+
+  /* Currency bar */
+  .fx-bar{background:var(--input-bg);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:18px;overflow-x:auto;scrollbar-width:none;position:sticky;top:73px;z-index:98;}
+  .fx-bar::-webkit-scrollbar{display:none;}
+  .cpill{display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0;}
+  .clabel{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);}
+  .cval{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;}
+  .cval.zar{color:var(--accent);} .cval.usd{color:var(--accent3);} .cval.eur{color:var(--eur);}
+  .cdot{width:5px;height:5px;border-radius:50%;background:var(--accent);}
+  .cdot.live{animation:pulse 2s infinite;} .cdot.gray{background:var(--muted);}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+  /* Tab bar */
+
+
+  /* Panels */
+  .panel{display:none;padding:16px 16px 40px;max-width:680px;margin:0 auto;}
+  .panel.active{display:block;}
+
+  /* Steps */
+  .steps{display:flex;gap:6px;margin-bottom:24px;}
+  .step-dot{flex:1;height:3px;background:var(--border);border-radius:2px;transition:background 0.3s;}
+  .step-dot.active{background:var(--accent);} .step-dot.done{background:var(--accent);opacity:0.4;}
+  .section-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+
+  /* Cards */
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:16px;}
+  .card-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+  /* Type grid */
+  .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .type-btn{background:var(--input-bg);border:2px solid var(--border);border-radius:8px;padding:14px 12px;cursor:pointer;text-align:left;transition:all 0.15s;display:flex;align-items:center;gap:10px;-webkit-tap-highlight-color:transparent;}
+  .type-btn:active{transform:scale(0.97);}
+  .type-btn.selected{border-color:var(--accent);background:rgba(74,222,128,0.08);}
+  .type-icon{font-size:22px;flex-shrink:0;}
+  .type-name{font-weight:600;font-size:13px;line-height:1.2;}
+  .type-sub{font-size:10px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;}
+  .type-btn.selected .type-name{color:var(--accent);}
+
+  /* Fields */
+  .field{margin-bottom:14px;}
+  .field-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+  .req{color:var(--accent);font-size:12px;}
+  .field input,.field select,.field textarea{width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:16px;padding:13px 14px;outline:none;transition:border-color 0.15s;-webkit-appearance:none;}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);}
+  .field input[type="date"]::-webkit-calendar-picker-indicator{filter:invert(0.6);}
+  .field select option{background:var(--card);}
+  .field textarea{resize:none;height:80px;}
+
+  /* ZAR prefix */
+  .prefix-wrap{position:relative;}
+  .prefix-wrap .prefix{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);pointer-events:none;}
+  .prefix-wrap input{padding-left:34px;}
+
+  /* PGM */
+  .pgm-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .pgm-label{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;text-align:center;}
+  .pgm-field input{text-align:center;font-family:'DM Mono',monospace;font-size:18px;font-weight:500;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:14px 8px;width:100%;outline:none;transition:border-color 0.15s;-webkit-appearance:none;}
+  .pgm-field.pt .pgm-label{color:#94A3B8;} .pgm-field.pt input:focus{border-color:#94A3B8;}
+  .pgm-field.pd .pgm-label{color:var(--accent2);} .pgm-field.pd input:focus{border-color:var(--accent2);}
+  .pgm-field.rh .pgm-label{color:var(--accent3);} .pgm-field.rh input:focus{border-color:var(--accent3);}
+
+  /* Price display */
+  .price-disp{background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .pd-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .pd-val{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;color:var(--accent);}
+
+  /* Basket bar */
+  .basket-bar{background:rgba(74,222,128,0.06);border:1px solid var(--accent);border-radius:8px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .bb-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
+  .bb-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
+  .bb-val{font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--accent);}
+
+  /* Buttons */
+  .btn{width:100%;border:none;border-radius:10px;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;padding:15px;cursor:pointer;transition:all 0.15s;margin-bottom:10px;display:block;}
+  .btn:active{transform:scale(0.98);opacity:0.9;}
+  .btn:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;transform:none;}
+  .btn-green{background:var(--accent);color:#0D0F0E;}
+  .btn-blue{background:var(--accent3);color:#0D0F0E;}
+  .btn-ghost{background:transparent;border:2px solid var(--border);color:var(--muted);}
+  .btn-outline-green{background:transparent;border:2px solid var(--accent);color:var(--accent);}
+  .btn-outline-blue{background:transparent;border:2px solid var(--accent3);color:var(--accent3);}
+
+  /* Form sections */
+  .form-section{display:none;animation:fadeIn 0.2s ease;}
+  .form-section.visible{display:block;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+  /* Confirm screen */
+  .confirm-screen{display:none;text-align:center;padding:40px 16px;animation:fadeIn 0.3s ease;}
+  .confirm-screen.visible{display:block;}
+  .confirm-icon{font-size:60px;margin-bottom:12px;}
+  .confirm-title{font-family:'Bebas Neue',sans-serif;font-size:34px;letter-spacing:3px;color:var(--accent);margin-bottom:6px;}
+  .confirm-sub{color:var(--muted);font-size:13px;margin-bottom:28px;}
+  .confirm-summary{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:left;margin-bottom:16px;}
+  .crow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;}
+  .crow:last-child{border-bottom:none;}
+  .ck{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;}
+  .cv{font-weight:600;}
+
+  /* History */
+  .hist-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;}
+  .hist-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;}
+  .hist-date{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-align:right;margin-top:4px;}
+  .summary-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px;}
+  .stile{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 10px;text-align:center;}
+  .sl{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;}
+  .sv{font-family:'DM Mono',monospace;font-size:15px;font-weight:500;}
+  .sv.green{color:var(--accent);} .sv.blue{color:var(--accent3);} .sv.amber{color:var(--accent2);}
+
+  .empty-state{text-align:center;padding:60px 20px;color:var(--muted);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;}
+  .empty-icon{font-size:40px;margin-bottom:14px;opacity:0.3;}
+
+  /* Transaction cards */
+  .tx-card{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:14px;overflow:hidden;}
+  .tx-head{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+  .tx-customer{font-weight:700;font-size:15px;margin-bottom:3px;}
+  .tx-meta{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);}
+  .tx-total{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;color:var(--accent);}
+  .tx-chev{color:var(--muted);font-size:11px;margin-top:4px;transition:transform 0.2s;}
+  .tx-chev.open{transform:rotate(180deg);}
+  .tx-items{display:none;border-top:1px solid var(--border);}
+  .tx-items.open{display:block;}
+
+  .item-row{padding:12px 16px;border-bottom:1px solid var(--border);}
+  .item-row:last-child{border-bottom:none;}
+  .item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .etype-badge{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 8px;border-radius:4px;font-weight:500;}
+  .b-powder{background:rgba(74,222,128,0.12);color:var(--accent);}
+  .b-low_grade_powder{background:rgba(245,158,11,0.12);color:var(--accent2);}
+  .b-loose_metals{background:rgba(56,189,248,0.12);color:var(--accent3);}
+  .b-full_metal_cat{background:rgba(167,139,250,0.12);color:var(--eur);}
+  .b-full_ceramic_cat{background:rgba(251,113,133,0.12);color:#FB7185;}
+  .b-scrap_metal{background:rgba(107,127,116,0.12);color:var(--muted);}
+  .item-price{font-family:'DM Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);}
+  .drow{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;}
+  .drow:last-child{border-bottom:none;}
+  .dkey{color:var(--muted);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;}
+  .dval{font-weight:500;}
+  .pgm-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .ppill{font-family:'DM Mono',monospace;font-size:11px;padding:3px 8px;border-radius:4px;}
+  .ppill.pt{background:rgba(148,163,184,0.15);color:#94A3B8;}
+  .ppill.pd{background:rgba(245,158,11,0.15);color:var(--accent2);}
+  .ppill.rh{background:rgba(56,189,248,0.15);color:var(--accent3);}
+  .note-tag{background:rgba(74,222,128,0.06);border:1px solid var(--border);border-radius:6px;padding:8px 10px;font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;}
+
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;}
+
+  @media(min-width:480px){.type-grid{grid-template-columns:1fr 1fr 1fr;}.panel{padding:20px 24px 40px;}}
+
+  /* PIN screen */
+  .pin-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;}
+  .pin-logo{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:6px;color:var(--accent);margin-bottom:6px;}
+  .pin-sub{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:48px;}
+  .pin-dots{display:flex;gap:16px;margin-bottom:40px;}
+  .pin-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);background:transparent;transition:all 0.15s;}
+  .pin-dot.filled{background:var(--accent);border-color:var(--accent);}
+  .pin-dot.error{background:var(--danger);border-color:var(--danger);}
+  .pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;width:100%;max-width:280px;}
+  .pin-btn{background:var(--card);border:1px solid var(--border);border-radius:12px;color:var(--text);font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;padding:20px;cursor:pointer;transition:all 0.1s;-webkit-tap-highlight-color:transparent;}
+  .pin-btn:active{background:var(--border);transform:scale(0.95);}
+  .pin-btn.del{font-size:20px;color:var(--muted);}
+  .pin-error{font-family:'DM Mono',monospace;font-size:11px;color:var(--danger);letter-spacing:2px;margin-top:20px;height:16px;text-align:center;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div><div class="logo">SGR</div><div class="logo-sub">Stock Purchase Entry</div></div>
+  <div class="clock"><div id="clock-time">--:--</div><div class="clock-date" id="clock-date">--</div></div>
+</div>
+
+<div class="fx-bar">
+  <div class="cpill"><div class="cdot live"></div><span class="clabel">USD/ZAR</span><span class="cval zar" id="r-usdzar">…</span></div>
+  <div class="cpill"><div class="cdot live"></div><span class="clabel">EUR/ZAR</span><span class="cval eur" id="r-eurzar">…</span></div>
+  <div class="cpill"><div class="cdot live"></div><span class="clabel">EUR/USD</span><span class="cval usd" id="r-eurusd">…</span></div>
+  <div class="cpill"><div class="cdot gray"></div><span class="clabel">Pt $/oz</span><span class="cval usd">see sheet</span></div>
+  <div class="cpill"><div class="cdot gray"></div><span class="clabel">Pd $/oz</span><span class="cval usd">see sheet</span></div>
+  <div class="cpill"><div class="cdot gray"></div><span class="clabel">Rh $/oz</span><span class="cval usd">see sheet</span></div>
+  <div class="cpill"><span class="clabel" id="fx-updated">updating…</span></div>
+</div>
+
+
+
+<!-- ENTRY PANEL -->
+<div class="panel active" id="panel-entry">
+  <form id="purchaseForm" novalidate>
+
+    <div class="steps">
+      <div class="step-dot active" id="dot1"></div>
+      <div class="step-dot" id="dot2"></div>
+      <div class="step-dot" id="dot3"></div>
+    </div>
+
+    <!-- Step 1: Type -->
+    <div class="form-section visible" id="step1">
+      <div class="section-label">Step 1 of 3 &mdash; Select stock type</div>
+      <div class="card">
+        <div class="card-title">What are you buying?</div>
+        <div class="type-grid">
+          <button type="button" class="type-btn" data-type="powder">
+            <span class="type-icon">&#x2697;&#xFE0F;</span>
+            <div><div class="type-name">Powder</div><div class="type-sub">High grade</div></div>
+          </button>
+          <button type="button" class="type-btn" data-type="low_grade_powder">
+            <span class="type-icon">&#x1F9EA;</span>
+            <div><div class="type-name">Low Grade Powder</div><div class="type-sub">Lower PGM</div></div>
+          </button>
+          <button type="button" class="type-btn" data-type="loose_metals">
+            <span class="type-icon">&#x1F527;</span>
+            <div><div class="type-name">Loose Metals</div><div class="type-sub">De-canned on spot</div></div>
+          </button>
+          <button type="button" class="type-btn" data-type="full_metal_cat">
+            <span class="type-icon">&#x1F3ED;</span>
+            <div><div class="type-name">Full Metal Cat</div><div class="type-sub">Whole unit</div></div>
+          </button>
+          <button type="button" class="type-btn" data-type="full_ceramic_cat">
+            <span class="type-icon">&#x1F3FA;</span>
+            <div><div class="type-name">Full Ceramic Cat</div><div class="type-sub">Whole unit</div></div>
+          </button>
+          <button type="button" class="type-btn" data-type="scrap_metal">
+            <span class="type-icon">&#x267B;&#xFE0F;</span>
+            <div><div class="type-name">Scrap Metal</div><div class="type-sub">De-canning leftover</div></div>
+          </button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-green" id="nextBtn1" disabled id="nextBtn1Wrap">NEXT &#x2192;</button>
+    </div>
+
+    <!-- Step 2: Details -->
+    <div class="form-section" id="step2">
+      <div class="section-label">Step 2 of 3 &mdash; Purchase details</div>
+      <div class="card">
+        <div class="card-title" id="step2Title">Details</div>
+        <div class="field">
+          <div class="field-label">Date <span class="req">*</span></div>
+          <input type="date" id="purchaseDate" required>
+        </div>
+        <div class="field">
+          <div class="field-label">Supplier / Customer <span class="req">*</span></div>
+          <input type="text" id="supplierName" placeholder="Enter name" autocomplete="off">
+        </div>
+        <div id="fields-kg" style="display:none">
+          <div class="field">
+            <div class="field-label">Weight (kg) <span class="req">*</span></div>
+            <input type="number" id="weightKg" placeholder="0.000" step="0.001" min="0">
+          </div>
+        </div>
+        <div id="fields-units" style="display:none">
+          <div class="two-col">
+            <div class="field">
+              <div class="field-label">Number of units <span class="req">*</span></div>
+              <input type="number" id="numUnits" placeholder="0" step="1" min="1">
+            </div>
+            <div class="field">
+              <div class="field-label">CAT code / Ref</div>
+              <input type="text" id="catCode" placeholder="e.g. BMW-001" autocomplete="off">
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="field-label">Total price paid (ZAR) <span class="req">*</span></div>
+          <div class="prefix-wrap">
+            <span class="prefix">R</span>
+            <input type="number" id="pricePaid" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+        <div id="perUnitDisplay" style="display:none">
+          <div class="price-disp"><span class="pd-label">Price per unit</span><span class="pd-val" id="perUnitVal">R 0.00</span></div>
+        </div>
+        <div id="perKgDisplay" style="display:none">
+          <div class="price-disp"><span class="pd-label">Price per kg</span><span class="pd-val" id="perKgVal">R 0.00</span></div>
+        </div>
+      </div>
+
+      <div class="card" id="pgmCard" style="display:none">
+        <div class="card-title">Scanner Readings</div>
+        <p class="hint" style="margin-bottom:14px;">Enter raw values exactly as shown on device</p>
+        <div class="pgm-grid">
+          <div class="pgm-field pt"><div class="pgm-label">PT (g)</div><input type="number" id="ptReading" placeholder="0.00" step="0.01" min="0"></div>
+          <div class="pgm-field pd"><div class="pgm-label">PD (g)</div><input type="number" id="pdReading" placeholder="0.00" step="0.01" min="0"></div>
+          <div class="pgm-field rh"><div class="pgm-label">RH (g)</div><input type="number" id="rhReading" placeholder="0.00" step="0.01" min="0"></div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="field-label">Notes (optional)</div>
+        <textarea id="notes" placeholder="Any additional information..."></textarea>
+      </div>
+
+      <div class="two-col">
+        <button type="button" class="btn btn-ghost" id="backBtn2">&#x2190; BACK</button>
+        <button type="button" class="btn btn-green" id="nextBtn2">REVIEW &#x2192;</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Review & basket -->
+    <div class="form-section" id="step3">
+      <div class="section-label">Step 3 of 3 &mdash; Review &amp; confirm</div>
+
+      <!-- Basket bar — shown after first item added -->
+      <div class="basket-bar" id="basketBar" style="display:none">
+        <div>
+          <div class="bb-label">Basket so far</div>
+          <div class="bb-sub" id="basketItemCount"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
+          <div class="bb-val" id="basketTotal">R 0.00</div>
+          <button type="button" id="viewBasketBtn"
+            style="background:transparent;border:1px solid var(--accent);color:var(--accent);border-radius:6px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;padding:4px 10px;cursor:pointer;white-space:nowrap;">
+            VIEW BASKET &#x25BC;
+          </button>
+        </div>
+      </div>
+
+      <!-- Expandable basket review — same style as history log -->
+      <div id="basketReview" style="display:none;margin-bottom:16px;animation:fadeIn 0.2s ease;">
+        <div class="section-label" style="margin-bottom:8px;">Items in basket</div>
+        <div id="basketReviewItems"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">This Item</div>
+        <div id="reviewContent"></div>
+      </div>
+
+      <button type="button" class="btn btn-ghost" id="editBtn3">&#x2190; EDIT</button>
+      <button type="button" class="btn btn-blue" id="addAnotherBtn">+ ADD ANOTHER ITEM</button>
+      <button type="button" class="btn btn-green" id="closeTransBtn">&#x2713; DONE &mdash; CLOSE TRANSACTION</button>
+    </div>
+
+  </form>
+
+  <!-- Confirm screen -->
+  <div class="confirm-screen" id="confirmScreen">
+    <div class="confirm-icon">&#x2705;</div>
+    <div class="confirm-title">Transaction Closed</div>
+    <div class="confirm-sub" id="confirmSub"></div>
+    <div class="confirm-summary" id="confirmSummaryEl"></div>
+    <button class="btn btn-outline-green" id="newCustomerBtn">+ NEW CUSTOMER</button>
+  </div>
+</div>
+
+<!-- HISTORY PANEL -->
+
+<!-- PIN Screen -->
+<div class="pin-screen" id="pinScreen">
+  <div class="pin-logo">SGR</div>
+  <div class="pin-sub">Stock Purchase Entry</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" data-val="1">1</button>
+    <button class="pin-btn" data-val="2">2</button>
+    <button class="pin-btn" data-val="3">3</button>
+    <button class="pin-btn" data-val="4">4</button>
+    <button class="pin-btn" data-val="5">5</button>
+    <button class="pin-btn" data-val="6">6</button>
+    <button class="pin-btn" data-val="7">7</button>
+    <button class="pin-btn" data-val="8">8</button>
+    <button class="pin-btn" data-val="9">9</button>
+    <button class="pin-btn del" data-val="del">&#x232B;</button>
+    <button class="pin-btn" data-val="0">0</button>
+    <button class="pin-btn del" style="visibility:hidden"></button>
+  </div>
+  <div class="pin-error" id="pinError"></div>
+</div>
+<script src="app.js" defer></script>
+</body>
+</html>
